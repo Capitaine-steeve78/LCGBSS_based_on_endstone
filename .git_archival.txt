@@ -1,0 +1,4 @@
+node: 1984ad66621e36b0e104a6dd84de24b3a2f8c9c3
+node-date: 2025-10-26T16:48:26Z
+describe-name: v0.10.7-102-g1984ad6662
+ref-names: HEAD -> main
