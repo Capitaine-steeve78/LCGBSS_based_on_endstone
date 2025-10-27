@@ -1,4 +1,3 @@
-# a exécuter avant chaque release !
 name: Compilation et Tests
 
 on:
@@ -19,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-2022]  # plus besoin de Debug
+        os: [ubuntu-22.04, windows-2022]
 
     steps:
       - name: Checkout Code
@@ -76,16 +75,20 @@ jobs:
       - name: Install Dependencies with Conan (Linux)
         if: runner.os == 'Linux'
         run: |
-          conan install . --build=missing -s compiler.cppstd=20 -s build_type=Release \
+          conan install . --build=missing \
+            -s compiler.cppstd=20 \
+            -s build_type=Release \
             -s compiler.libcxx=libc++ \
-            -c tools.cmake.cmaketoolchain:generator=Ninja
+            -g CMakeToolchain
 
       - name: Install Dependencies with Conan (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          conan install . --build=missing -s compiler.cppstd=20 -s build_type=Release `
-            -c tools.cmake.cmaketoolchain:generator=Ninja
+          conan install . --build=missing `
+            -s compiler.cppstd=20 `
+            -s build_type=Release `
+            -g CMakeToolchain
 
       - name: Configure and Build with CMake
         run: |
