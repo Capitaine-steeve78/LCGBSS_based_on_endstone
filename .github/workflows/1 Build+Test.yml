@@ -41,6 +41,7 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
+      # Linux : installation Clang + dépendances
       - name: Set up Clang (Linux)
         if: runner.os == 'Linux'
         env:
@@ -57,6 +58,7 @@ jobs:
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV
 
+      # Windows : environnement MSVC
       - name: Set up MSVC (Windows)
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
@@ -76,8 +78,7 @@ jobs:
       - name: Install Dependencies with Conan (Linux)
         if: runner.os == 'Linux'
         run: |
-          conan install . \
-            --build=missing \
+          conan install . --build=missing \
             -s compiler.cppstd=20 \
             -s build_type=Release \
             -s compiler.libcxx=libc++ \
@@ -96,11 +97,13 @@ jobs:
             -o cpptrace/*:unwind_with_nothing=True `
             --conf tools.cmake.cmaketoolchain:generator=Ninja
 
+      # ---------- Configuration + Build ----------
       - name: Configure and Build with CMake
         run: |
           cmake -S . -B build/Release -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="generators/conan_toolchain.cmake" \
-            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCPPTRACE_UNWIND_WITH_NOTHING=ON
           cmake --build build/Release
 
       - name: Run Tests
