@@ -1,3 +1,5 @@
+# auto apres release
+# si besoin le faire a la main
 name: Test apres release
 
 on:
