@@ -1,16 +1,7 @@
-name: CI manual
+name: CI Manual
 
 on:
-  workflow_dispatch:
-    inputs:
-      build_type:
-        description: 'Type de build'
-        required: true
-        default: 'Release'
-      os:
-        description: 'Système d’exploitation'
-        required: true
-        default: 'ubuntu-22.04'
+  workflow_dispatch:  # Exécution manuelle uniquement
 
 permissions: read-all
 
@@ -20,8 +11,18 @@ concurrency:
 
 jobs:
   build:
-    name: Build on ${{ github.event.inputs.os }} (${{ github.event.inputs.build_type }})
-    runs-on: ${{ github.event.inputs.os }}
+    name: Build on ${{ matrix.os }} (${{ matrix.build_type }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false  # ⚙️ continue même si un des builds échoue
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            build_type: Debug
+          - os: ubuntu-22.04
+            build_type: Release
+          - os: windows-2022
+            build_type: Release
 
     steps:
       - name: Checkout Code
@@ -34,9 +35,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.conan2/p
-          key: ${{ runner.os }}-conan-${{ github.event.inputs.build_type }}-${{ hashFiles('conanfile.py') }}
+          key: ${{ runner.os }}-conan-${{ matrix.build_type }}-${{ hashFiles('conanfile.py') }}
           restore-keys: |
-            ${{ runner.os }}-conan-${{ github.event.inputs.build_type }}-
+            ${{ runner.os }}-conan-${{ matrix.build_type }}-
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -78,17 +79,26 @@ jobs:
       - name: Install Dependencies with Conan
         run: |
           if [ "${{ runner.os }}" == "Linux" ]; then
-            conan install . --build=missing -s compiler.cppstd=20 -s build_type=${{ github.event.inputs.build_type }} -c tools.cmake.cmaketoolchain:generator=Ninja -s compiler.libcxx=libc++
+            conan install . --build=missing \
+              -s compiler.cppstd=20 \
+              -s build_type=${{ matrix.build_type }} \
+              -c tools.cmake.cmaketoolchain:generator=Ninja \
+              -s compiler.libcxx=libc++
           else
-            conan install . --build=missing -s compiler.cppstd=20 -s build_type=${{ github.event.inputs.build_type }} -c tools.cmake.cmaketoolchain:generator=Ninja
+            conan install . --build=missing \
+              -s compiler.cppstd=20 \
+              -s build_type=${{ matrix.build_type }} \
+              -c tools.cmake.cmaketoolchain:generator=Ninja
           fi
 
       - name: Configure and Build with CMake
         run: |
-          cmake -S . -B build/${{ github.event.inputs.build_type }} -G Ninja \
+          cmake -S . -B build/${{ matrix.build_type }} -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="generators/conan_toolchain.cmake" \
-            -DCMAKE_BUILD_TYPE=${{ github.event.inputs.build_type }}
-          cmake --build build/${{ github.event.inputs.build_type }}
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake --build build/${{ matrix.build_type }}
 
       - name: Run Tests
-        run: ctest --test-dir build/${{ github.event.inputs.build_type }}
+        run: |
+          echo "🧪 Running tests for ${{ matrix.os }} (${{ matrix.build_type }})..."
+          ctest --test-dir build/${{ matrix.build_type }}
