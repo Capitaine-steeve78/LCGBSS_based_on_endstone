@@ -47,7 +47,7 @@ jobs:
           LLVM_VERSION: 16
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y build-essential wget software-properties-common
+          sudo apt-get install -y build-essential wget software-properties-common libunwind-dev
           sudo wget https://apt.llvm.org/llvm.sh
           sudo chmod +x llvm.sh
           sudo ./llvm.sh ${LLVM_VERSION}
@@ -88,13 +88,15 @@ jobs:
           conan install . --build=missing `
             -s compiler.cppstd=20 `
             -s build_type=Release `
+            --conf tools.cmake.cmaketoolchain:generator=Ninja `
             -g CMakeToolchain
 
       - name: Configure and Build with CMake
         run: |
           cmake -S . -B build/Release -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="generators/conan_toolchain.cmake" \
-            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCPPTRACE_UNWIND_WITH_NOTHING=ON
           cmake --build build/Release
 
       - name: Run Tests
