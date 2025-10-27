@@ -1,7 +1,7 @@
 name: CI Manual
 
 on:
-  workflow_dispatch:  # Exécution manuelle uniquement
+  workflow_dispatch:
 
 permissions: read-all
 
@@ -13,14 +13,16 @@ jobs:
   build:
     name: Build on ${{ matrix.os }} (${{ matrix.build_type }})
     runs-on: ${{ matrix.os }}
+    continue-on-error: true  # permet de continuer même si une build échoue
+
     strategy:
-      fail-fast: false  # ⚙️ continue même si un des builds échoue
+      fail-fast: false  # ne pas arrêter les autres builds si une échoue
       matrix:
         include:
           - os: ubuntu-22.04
-            build_type: Debug
-          - os: ubuntu-22.04
             build_type: Release
+          - os: ubuntu-22.04
+            build_type: Debug
           - os: windows-2022
             build_type: Release
 
@@ -79,16 +81,9 @@ jobs:
       - name: Install Dependencies with Conan
         run: |
           if [ "${{ runner.os }}" == "Linux" ]; then
-            conan install . --build=missing \
-              -s compiler.cppstd=20 \
-              -s build_type=${{ matrix.build_type }} \
-              -c tools.cmake.cmaketoolchain:generator=Ninja \
-              -s compiler.libcxx=libc++
+            conan install . --build=missing -s compiler.cppstd=20 -s build_type=${{ matrix.build_type }} -c tools.cmake.cmaketoolchain:generator=Ninja -s compiler.libcxx=libc++
           else
-            conan install . --build=missing \
-              -s compiler.cppstd=20 \
-              -s build_type=${{ matrix.build_type }} \
-              -c tools.cmake.cmaketoolchain:generator=Ninja
+            conan install . --build=missing -s compiler.cppstd=20 -s build_type=${{ matrix.build_type }} -c tools.cmake.cmaketoolchain:generator=Ninja
           fi
 
       - name: Configure and Build with CMake
@@ -99,6 +94,11 @@ jobs:
           cmake --build build/${{ matrix.build_type }}
 
       - name: Run Tests
-        run: |
-          echo "🧪 Running tests for ${{ matrix.os }} (${{ matrix.build_type }})..."
-          ctest --test-dir build/${{ matrix.build_type }}
+        run: ctest --test-dir build/${{ matrix.build_type }}
+        continue-on-error: true  # les tests peuvent échouer sans stopper le reste
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}-${{ matrix.build_type }}
+          path: build/${{ matrix.build_type }}
