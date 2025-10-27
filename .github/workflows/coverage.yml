@@ -1,4 +1,4 @@
-name: Build and Test with Coverage
+name: Test apres release
 
 on:
   release:
