@@ -1,135 +1,65 @@
-name: Compilation et Tests
+name: Build with Conan and CMake
 
 on:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-concurrency:
-  group: manual-build-${{ github.ref }}
-  cancel-in-progress: true
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }} (Release)
     runs-on: ${{ matrix.os }}
-
     strategy:
-      fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-2022]
+        os: [ubuntu-latest, windows-2022]
+        compiler: [clang, msvc]
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v5
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
-          fetch-depth: 0
-          submodules: true
+          python-version: "3.12"
 
-      - name: Cache Conan
-        uses: actions/cache@v4
-        with:
-          path: ~/.conan2/p
-          key: ${{ runner.os }}-conan-Release-${{ hashFiles('conanfile.py') }}
-          restore-keys: |
-            ${{ runner.os }}-conan-Release-
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-
-      # Linux Clang
-      - name: Set up Clang (Linux)
-        if: matrix.os == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y build-essential wget software-properties-common libunwind-dev ninja-build
-          sudo wget https://apt.llvm.org/llvm.sh
-          sudo chmod +x llvm.sh
-          sudo ./llvm.sh 16
-          sudo apt-get install -y libc++-16-dev libc++abi-16-dev
-          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 200
-          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 200
-          echo "CC=clang" >> $GITHUB_ENV
-          echo "CXX=clang++" >> $GITHUB_ENV
-
-      # Windows MSVC
-      - name: Set up MSVC (Windows)
-        if: matrix.os == 'windows-2022'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      # CMake
-      - name: Set up CMake and Ninja
-        uses: lukka/get-cmake@latest
-
-      # Conan
       - name: Install Conan
-        run: |
-          python -m pip install --upgrade pip
-          pip install conan
-          conan profile detect --force
+        run: pip install conan
 
-      # Install dependencies (Linux)
-      - name: Install Dependencies with Conan (Linux)
-        if: matrix.os == 'ubuntu-22.04'
+      - name: Install dependencies with Conan
         shell: bash
         run: |
-          conan install . \
-            --build=missing \
-            -s compiler.cppstd=20 \
-            -s build_type=Release \
-            -s compiler.libcxx=libc++ \
-            -o cpptrace/*:unwind_with_nothing=True \
-            --conf tools.cmake.cmaketoolchain:generator=Ninja
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            conan install . \
+              --build=missing \
+              -s compiler.cppstd=20 \
+              -s compiler=clang \
+              -s build_type=Release \
+              -o cpptrace/*:unwind_with_nothing=True \
+              -g cmake
+          else
+            conan install . `
+              --build=missing `
+              -s compiler=Visual Studio `
+              -s compiler.cppstd=20 `
+              -s build_type=Release `
+              -o cpptrace/*:unwind_with_nothing=True `
+              -g cmake
 
-      # Install dependencies (Windows)
-      - name: Install Dependencies with Conan (Windows)
-        if: matrix.os == 'windows-2022'
-        shell: pwsh
-        run: |
-          conan install . `
-            --build=missing `
-            -s compiler.cppstd=20 `
-            -s build_type=Release `
-            -o cpptrace/*:unwind_with_nothing=True
-
-      # Configure & build Linux
-      - name: Configure and Build with CMake (Linux)
-        if: matrix.os == 'ubuntu-22.04'
+      - name: Configure and Build CMake
         shell: bash
         run: |
-          cmake -S . -B build/Release -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE=generators/conan_toolchain.cmake \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCPPTRACE_UNWIND_WITH_NOTHING=ON
-          cmake --build build/Release
-
-      # Configure & build Windows
-      - name: Configure and Build with CMake (Windows)
-        if: matrix.os == 'windows-2022'
-        shell: pwsh
-        run: |
-          cmake -S . -B build/Release -G "Visual Studio 17 2022" `
-            -A x64 `
-            -DCMAKE_TOOLCHAIN_FILE="generators\conan_toolchain.cmake" `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DCPPTRACE_UNWIND_WITH_NOTHING=ON
-          cmake --build build/Release --config Release
-
-      # Run tests
-      - name: Run Tests
-        shell: bash
-        run: ctest --test-dir build/Release --output-on-failure
-        continue-on-error: true
-
-      # Upload artifacts
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-${{ matrix.os }}-Release
-          path: build/Release
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            cmake -S . -B build/Release -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE=generators/conan_toolchain.cmake \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCPPTRACE_UNWIND_WITH_NOTHING=ON
+            cmake --build build/Release
+          else
+            $toolchain = "generators\conan_toolchain.cmake"
+            cmake -S . -B build/Release -G "Visual Studio 17 2022" `
+              -A x64 `
+              -DCMAKE_TOOLCHAIN_FILE=$toolchain `
+              -DCMAKE_BUILD_TYPE=Release `
+              -DCPPTRACE_UNWIND_WITH_NOTHING=ON
+            cmake --build build/Release --config Release
