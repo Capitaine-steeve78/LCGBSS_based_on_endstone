@@ -41,7 +41,7 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      # 🐧 Linux : installation Clang + libc++ + libunwind
+      # ---------- Linux: installer Clang + libc++ + libunwind ----------
       - name: Set up Clang (Linux)
         if: runner.os == 'Linux'
         env:
@@ -58,7 +58,7 @@ jobs:
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV
 
-      # 🪟 Windows : activer environnement MSVC
+      # ---------- Windows: activer environnement MSVC ----------
       - name: Set up MSVC (Windows)
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
@@ -74,20 +74,18 @@ jobs:
           pip install conan
           conan profile detect --force
 
-      # ---------- Linux ----------
-      - name: Install Dependencies with Conan (Linux)
-        if: runner.os == 'Linux'
+      # ---------- Installer dépendances avec Conan ----------
+      - name: Install Dependencies with Conan
+        shell: bash
         run: |
           conan install . \
             --build=missing \
             -s compiler.cppstd=20 \
             -s build_type=Release \
-            -s compiler.libcxx=libc++ \
             -o cpptrace/*:unwind_with_nothing=True \
-            --conf "tools.cmake.cmaketoolchain:generator=Ninja" \
-            --conf "tools.cmake.cmaketoolchain:extra_defines=['CPPTRACE_UNWIND_WITH_NOTHING=ON']"
+            --conf "tools.cmake.cmaketoolchain:generator=Ninja"
+        if: runner.os == 'Linux'
 
-      # ---------- Windows ----------
       - name: Install Dependencies with Conan (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -97,16 +95,15 @@ jobs:
             -s compiler.cppstd=20 `
             -s build_type=Release `
             -o cpptrace/*:unwind_with_nothing=True `
-            --conf "tools.cmake.cmaketoolchain:generator=Ninja" `
-            --conf "tools.cmake.cmaketoolchain:extra_defines=['CPPTRACE_UNWIND_WITH_NOTHING=ON']"
+            --conf "tools.cmake.cmaketoolchain:generator=Ninja"
 
       # ---------- Configuration + Build ----------
       - name: Configure and Build with CMake
         shell: bash
         run: |
-          cmake -S . -B build/Release -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE="generators/conan_toolchain.cmake" \
-            -DCMAKE_BUILD_TYPE=Release \
+          cmake -S . -B build/Release -G Ninja `
+            -DCMAKE_TOOLCHAIN_FILE="generators/conan_toolchain.cmake" `
+            -DCMAKE_BUILD_TYPE=Release `
             -DCPPTRACE_UNWIND_WITH_NOTHING=ON
           cmake --build build/Release
 
