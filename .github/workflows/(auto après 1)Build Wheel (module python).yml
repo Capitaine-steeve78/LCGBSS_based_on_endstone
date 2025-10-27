@@ -1,3 +1,5 @@
+# s'exécute automatiquement 
+# NE L'EXÉCUTER A LA MAIN QUE SI RÉEL BESOIN
 name: build Wheel (module python) 
 
 on:
