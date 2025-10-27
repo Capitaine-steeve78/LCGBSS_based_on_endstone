@@ -23,7 +23,7 @@ concurrency:
 jobs:
   build:
     strategy:
-      fail-fast: false
+      fail-fast: true  # si un build échoue, les autres s’arrêtent aussi
       matrix:
         build_type: [ Release ]
         os: [ ubuntu-22.04, windows-2022 ]
@@ -60,6 +60,7 @@ jobs:
         env:
           LLVM_VERSION: 16
         run: |
+          set -e
           sudo apt-get update -y -q
           sudo apt-get install -y -q build-essential lsb-release wget software-properties-common
           sudo wget https://apt.llvm.org/llvm.sh
@@ -68,8 +69,6 @@ jobs:
           sudo apt-get install -y -q libc++-${LLVM_VERSION}-dev libc++abi-${LLVM_VERSION}-dev
           sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${LLVM_VERSION} 200
           sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${LLVM_VERSION} 200
-          sudo update-alternatives --install /usr/bin/llvm-cov llvm-cov /usr/bin/llvm-cov-${LLVM_VERSION} 100
-          sudo update-alternatives --install /usr/bin/ld ld /usr/bin/ld.lld-${LLVM_VERSION} 100
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV
 
@@ -82,27 +81,31 @@ jobs:
       - name: Set up CMake and Ninja
         uses: lukka/get-cmake@latest
 
-      - name: Set up Conan
+      - name: Install and Configure Conan
         run: |
+          set -e
           python -m pip install --upgrade pip
           pip install conan
           conan profile detect --force
 
-      - name: Install Dependencies with Conan (Linux)
-        if: runner.os == 'Linux'
+      - name: Install Dependencies with Conan
         run: |
-          conan install . --build=missing -s compiler.cppstd=20 -s build_type=${{ matrix.build_type }} -c tools.cmake.cmaketoolchain:generator=Ninja -s compiler.libcxx=libc++
+          set -e
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            conan install . --build=missing -s compiler.cppstd=20 -s build_type=${{ matrix.build_type }} -c tools.cmake.cmaketoolchain:generator=Ninja -s compiler.libcxx=libc++
+          else
+            conan install . --build=missing -s compiler.cppstd=20 -s build_type=${{ matrix.build_type }} -c tools.cmake.cmaketoolchain:generator=Ninja
+          fi
 
-      - name: Install Dependencies with Conan (Windows)
-        if: runner.os == 'Windows'
+      - name: Configure and Build with CMake
         run: |
-          conan install . --build=missing -s compiler.cppstd=20 -s build_type=${{ matrix.build_type }} -c tools.cmake.cmaketoolchain:generator=Ninja
-
-      - name: Build with CMake
-        run: |
-          cd build/${{ matrix.build_type }}
-          cmake ../.. -G Ninja -DCMAKE_TOOLCHAIN_FILE="generators/conan_toolchain.cmake" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          cmake --build .
+          set -e
+          cmake -S . -B build/${{ matrix.build_type }} -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="generators/conan_toolchain.cmake" \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake --build build/${{ matrix.build_type }}
 
       - name: Run Tests
-        run: ctest --test-dir build/${{ matrix.build_type }}
+        run: |
+          set -e
+          ctest --test-dir build/${{ matrix.build_type }}
