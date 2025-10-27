@@ -28,7 +28,7 @@ dependencies = [
     "asyncio",
     "click",
     "colorlog",
-    "endstone-bstats(>=1.0.0,<2.0.0)",
+    "endstone-bstats",
     "importlib-metadata",
     "importlib-resources",
     "lazy-loader",
