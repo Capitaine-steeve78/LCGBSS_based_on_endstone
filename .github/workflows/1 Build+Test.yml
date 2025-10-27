@@ -48,7 +48,7 @@ jobs:
           LLVM_VERSION: 16
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y build-essential wget software-properties-common libunwind-dev ninja-build
+          sudo apt-get install -y build-essential wget software-properties-common libunwind-dev libc6-dev ninja-build
           sudo wget https://apt.llvm.org/llvm.sh
           sudo chmod +x llvm.sh
           sudo ./llvm.sh ${LLVM_VERSION}
@@ -79,20 +79,20 @@ jobs:
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
+            # Forcer cpptrace à utiliser "unwind_with_nothing" pour Linux
             conan install . \
               --build=missing \
               -s compiler.cppstd=20 \
               -s build_type=Release \
               -s compiler.libcxx=libc++ \
-              -o cpptrace/*:unwind_with_nothing=True \
+              -o cpptrace:unwind_with_nothing=True \
               --conf tools.cmake.cmaketoolchain:generator=Ninja
           else
             conan install . \
               --build=missing \
               -s compiler.cppstd=20 \
               -s build_type=Release \
-              -o cpptrace/*:unwind_with_nothing=True
-          fi
+              -o cpptrace:unwind_with_nothing=True
 
       # ----------------- Configure & Build -----------------
       - name: Configure and Build with CMake
@@ -106,9 +106,8 @@ jobs:
           else
             cmake -S . -B build/Release -G "Visual Studio 17 2022" \
               -A x64 \
-              -DCMAKE_TOOLCHAIN_FILE="generators\\conan_toolchain.cmake" \
+              -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake" \
               -DCMAKE_BUILD_TYPE=Release
-          fi
           cmake --build build/Release --config Release
 
       - name: Run Tests
