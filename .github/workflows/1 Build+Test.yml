@@ -43,7 +43,7 @@ jobs:
 
       # ----------------- Linux -----------------
       - name: Set up Clang (Linux)
-        if: runner.os == 'Linux'
+        if: matrix.os == 'ubuntu-22.04'
         env:
           LLVM_VERSION: 16
         run: |
@@ -60,7 +60,7 @@ jobs:
 
       # ----------------- Windows -----------------
       - name: Set up MSVC (Windows)
-        if: runner.os == 'Windows'
+        if: matrix.os == 'windows-2022'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
@@ -84,17 +84,16 @@ jobs:
               -s compiler.cppstd=20 \
               -s build_type=Release \
               -s compiler.libcxx=libc++ \
-              -o cpptrace:unwind_with_nothing=True \
+              -o cpptrace/*:unwind_with_nothing=True \
               --conf tools.cmake.cmaketoolchain:generator=Ninja
           else
             conan install . \
               --build=missing \
               -s compiler.cppstd=20 \
               -s build_type=Release \
-              -o cpptrace:unwind_with_nothing=True
+              -o cpptrace/*:unwind_with_nothing=True
           fi
 
-      # ----------------- Configure & Build -----------------
       - name: Configure and Build with CMake
         shell: bash
         run: |
