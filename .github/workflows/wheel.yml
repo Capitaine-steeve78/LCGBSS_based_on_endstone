@@ -7,9 +7,6 @@ on:
       - main
       - stable
       - v*
-  release:
-    types:
-      - published
 
 permissions:
   contents: read
@@ -60,16 +57,16 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.2.1
         env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           CIBW_BUILD: ${{ matrix.python-tag }}-${{ matrix.platform }}
           CIBW_BUILD_VERBOSITY: 1
-          CIBW_ENVIRONMENT_PASS_LINUX: "CONAN_HOME SENTRY_AUTH_TOKEN"
+          CIBW_ENVIRONMENT_PASS_LINUX: "CONAN_HOME"
 
       - name: Change permission for Conan home folder (Linux)
         if: runner.os == 'Linux'
         run: sudo chown -R $USER:$USER ~/.conan2
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload built wheels
+        uses: actions/upload-artifact@v4
         with:
           name: endstone-wheels-${{ matrix.python-tag }}-${{ matrix.platform }}
           path: ./wheelhouse/*.whl
