@@ -16,7 +16,7 @@ jobs:
     continue-on-error: true  # permet de continuer même si une build échoue
 
     strategy:
-      fail-fast: false  # ne pas arrêter les autres builds si une échoue
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-22.04
@@ -78,13 +78,22 @@ jobs:
           pip install conan
           conan profile detect --force
 
+      # ---- Bloc corrigé pour fonctionner sur Linux et Windows ----
       - name: Install Dependencies with Conan
+        shell: pwsh
         run: |
-          if [ "${{ runner.os }}" == "Linux" ]; then
-            conan install . --build=missing -s compiler.cppstd=20 -s build_type=${{ matrix.build_type }} -c tools.cmake.cmaketoolchain:generator=Ninja -s compiler.libcxx=libc++
-          else
-            conan install . --build=missing -s compiler.cppstd=20 -s build_type=${{ matrix.build_type }} -c tools.cmake.cmaketoolchain:generator=Ninja
-          fi
+          if ($env:RUNNER_OS -eq "Linux") {
+            conan install . --build=missing `
+              -s compiler.cppstd=20 `
+              -s build_type=${{ matrix.build_type }} `
+              -c tools.cmake.cmaketoolchain:generator=Ninja `
+              -s compiler.libcxx=libc++
+          } else {
+            conan install . --build=missing `
+              -s compiler.cppstd=20 `
+              -s build_type=${{ matrix.build_type }} `
+              -c tools.cmake.cmaketoolchain:generator=Ninja
+          }
 
       - name: Configure and Build with CMake
         run: |
@@ -95,7 +104,7 @@ jobs:
 
       - name: Run Tests
         run: ctest --test-dir build/${{ matrix.build_type }}
-        continue-on-error: true  # les tests peuvent échouer sans stopper le reste
+        continue-on-error: true
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
