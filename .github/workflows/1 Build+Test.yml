@@ -63,7 +63,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: x86_64
+          arch: x64
 
       # ----------------- CMake & Conan -----------------
       - name: Set up CMake and Ninja
@@ -106,7 +106,7 @@ jobs:
           else
             cmake -S . -B build/Release -G "Visual Studio 17 2022" \
               -A x64 \
-              -DCMAKE_TOOLCHAIN_FILE="generators/conan_toolchain.cmake" \
+              -DCMAKE_TOOLCHAIN_FILE="generators\\conan_toolchain.cmake" \
               -DCMAKE_BUILD_TYPE=Release
           fi
           cmake --build build/Release --config Release
