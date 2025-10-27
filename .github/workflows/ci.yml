@@ -1,4 +1,4 @@
-name: CI Manual
+name: /Build/ Ubuntu 22.04 (release)
 
 on:
   workflow_dispatch:
