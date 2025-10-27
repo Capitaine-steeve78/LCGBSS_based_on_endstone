@@ -1,4 +1,4 @@
-# test
+# a exécuter avant chaque release !
 name: Compilation et Tests
 
 on:
