@@ -1,4 +1,4 @@
-name: CI Manual
+name: Compilation et Tests
 
 on:
   workflow_dispatch:
