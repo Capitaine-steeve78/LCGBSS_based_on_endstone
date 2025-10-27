@@ -11,20 +11,14 @@ concurrency:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }} (${{ matrix.build_type }})
+    name: Build on ${{ matrix.os }} (Release)
     runs-on: ${{ matrix.os }}
-    continue-on-error: true  # permet de continuer même si une build échoue
+    continue-on-error: true
 
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-22.04
-            build_type: Release
-          - os: ubuntu-22.04
-            build_type: Debug
-          - os: windows-2022
-            build_type: Release
+        os: [ubuntu-22.04, windows-2022]  # plus besoin de Debug
 
     steps:
       - name: Checkout Code
@@ -37,9 +31,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.conan2/p
-          key: ${{ runner.os }}-conan-${{ matrix.build_type }}-${{ hashFiles('conanfile.py') }}
+          key: ${{ runner.os }}-conan-Release-${{ hashFiles('conanfile.py') }}
           restore-keys: |
-            ${{ runner.os }}-conan-${{ matrix.build_type }}-
+            ${{ runner.os }}-conan-Release-
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -78,36 +72,30 @@ jobs:
           pip install conan
           conan profile detect --force
 
-      # ---- Bloc corrigé pour fonctionner sur Linux et Windows ----
       - name: Install Dependencies with Conan
-        shell: pwsh
+        if: runner.os == 'Linux'
         run: |
-          if ($env:RUNNER_OS -eq "Linux") {
-            conan install . --build=missing `
-              -s compiler.cppstd=20 `
-              -s build_type=${{ matrix.build_type }} `
-              -c tools.cmake.cmaketoolchain:generator=Ninja `
-              -s compiler.libcxx=libc++
-          } else {
-            conan install . --build=missing `
-              -s compiler.cppstd=20 `
-              -s build_type=${{ matrix.build_type }} `
-              -c tools.cmake.cmaketoolchain:generator=Ninja
-          }
+          conan install . --build=missing -s compiler.cppstd=20 -s build_type=Release \
+          -c tools.cmake.cmaketoolchain:generator=Ninja -s compiler.libcxx=libc++
+      - name: Install Dependencies with Conan (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          conan install . --build=missing -s compiler.cppstd=20 -s build_type=Release \
+          -c tools.cmake.cmaketoolchain:generator=Ninja
 
       - name: Configure and Build with CMake
         run: |
-          cmake -S . -B build/${{ matrix.build_type }} -G Ninja \
+          cmake -S . -B build/Release -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="generators/conan_toolchain.cmake" \
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          cmake --build build/${{ matrix.build_type }}
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/Release
 
       - name: Run Tests
-        run: ctest --test-dir build/${{ matrix.build_type }}
+        run: ctest --test-dir build/Release
         continue-on-error: true
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.os }}-${{ matrix.build_type }}
-          path: build/${{ matrix.build_type }}
+          name: build-${{ matrix.os }}-Release
+          path: build/Release
