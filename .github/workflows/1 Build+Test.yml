@@ -79,7 +79,6 @@ jobs:
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
-            # Forcer cpptrace à utiliser "unwind_with_nothing" pour Linux
             conan install . \
               --build=missing \
               -s compiler.cppstd=20 \
@@ -93,6 +92,7 @@ jobs:
               -s compiler.cppstd=20 \
               -s build_type=Release \
               -o cpptrace:unwind_with_nothing=True
+          fi
 
       # ----------------- Configure & Build -----------------
       - name: Configure and Build with CMake
@@ -108,6 +108,7 @@ jobs:
               -A x64 \
               -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake" \
               -DCMAKE_BUILD_TYPE=Release
+          fi
           cmake --build build/Release --config Release
 
       - name: Run Tests
