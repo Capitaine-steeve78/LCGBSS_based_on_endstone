@@ -114,9 +114,11 @@ jobs:
         if: matrix.os == 'windows-2022'
         shell: pwsh
         run: |
+          # Récupère le chemin absolu du toolchain généré par Conan
+          $conan_toolchain = (Get-ChildItem -Path . -Recurse -Filter "conan_toolchain.cmake").FullName
           cmake -S . -B build/Release -G "Visual Studio 17 2022" `
             -A x64 `
-            -DCMAKE_TOOLCHAIN_FILE="generators/conan_toolchain.cmake" `
+            -DCMAKE_TOOLCHAIN_FILE="$conan_toolchain" `
             -DCMAKE_BUILD_TYPE=Release `
             -DCPPTRACE_UNWIND_WITH_NOTHING=ON
           cmake --build build/Release --config Release
