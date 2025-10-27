@@ -72,31 +72,35 @@ jobs:
           pip install conan
           conan profile detect --force
 
+      # ---------- Linux ----------
       - name: Install Dependencies with Conan (Linux)
         if: runner.os == 'Linux'
         run: |
-          conan install . --build=missing \
+          conan install . \
+            --build=missing \
             -s compiler.cppstd=20 \
             -s build_type=Release \
             -s compiler.libcxx=libc++ \
-            -g CMakeToolchain
+            -o cpptrace/*:unwind_with_nothing=True \
+            --conf tools.cmake.cmaketoolchain:generator=Ninja
 
+      # ---------- Windows ----------
       - name: Install Dependencies with Conan (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          conan install . --build=missing `
+          conan install . `
+            --build=missing `
             -s compiler.cppstd=20 `
             -s build_type=Release `
-            --conf tools.cmake.cmaketoolchain:generator=Ninja `
-            -g CMakeToolchain
+            -o cpptrace/*:unwind_with_nothing=True `
+            --conf tools.cmake.cmaketoolchain:generator=Ninja
 
       - name: Configure and Build with CMake
         run: |
           cmake -S . -B build/Release -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="generators/conan_toolchain.cmake" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCPPTRACE_UNWIND_WITH_NOTHING=ON
+            -DCMAKE_BUILD_TYPE=Release
           cmake --build build/Release
 
       - name: Run Tests
