@@ -1,12 +1,10 @@
-# s'exécute automatiquement 
-# NE L'EXÉCUTER A LA MAIN QUE SI RÉEL BESOIN
 name: build Wheel (module python) 
 
 on:
-  workflow_dispatch:  # manuel
+  workflow_dispatch:
   release:
-    types: [published]  # lors d'une release
-  workflow_run:       # après un autre workflow
+    types: [published]
+  workflow_run:
     workflows: ["Compilation et Tests"]
     types:
       - completed
@@ -18,16 +16,16 @@ jobs:
   build_wheels:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     name: Build Wheel (${{ matrix.python-tag }}-${{ matrix.platform }})
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os == 'Windows' && '["self-hosted","Windows","X64"]' || matrix.os == 'linux' && '["self-hosted","linux","x64"]' }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-2022 ]
+        os: [ linux, Windows ]
         python-tag: [ "cp39", "cp310", "cp311", "cp312", "cp313", "cp314" ]
         include:
-          - os: ubuntu-latest
+          - os: linux
             platform: manylinux_x86_64
-          - os: windows-2022
+          - os: Windows
             platform: win_amd64
 
     steps:
@@ -46,7 +44,7 @@ jobs:
             ${{ runner.os }}-conan-RelWithDebInfo-
 
       - name: Set up MSVC (Windows)
-        if: runner.os == 'Windows'
+        if: matrix.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x86_64
@@ -55,7 +53,7 @@ jobs:
         uses: lukka/get-cmake@latest
 
       - name: Set Conan Home (Linux)
-        if: runner.os == 'Linux'
+        if: matrix.os == 'linux'
         run: echo "CONAN_HOME=/host${HOME}/.conan2" >> $GITHUB_ENV
 
       - name: Build wheels
@@ -66,7 +64,7 @@ jobs:
           CIBW_ENVIRONMENT_PASS_LINUX: "CONAN_HOME"
 
       - name: Change permission for Conan home folder (Linux)
-        if: runner.os == 'Linux'
+        if: matrix.os == 'linux'
         run: sudo chown -R $USER:$USER ~/.conan2
 
       - name: Upload built wheels
@@ -78,7 +76,7 @@ jobs:
   publish:
     name: Publish Wheels to PyPI
     if: github.event_name == 'release' && github.event.action == 'published'
-    runs-on: ubuntu-latest
+    runs-on: linux
     needs: [ build_wheels ]
     environment: pypi
     permissions:
