@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.15)
 project(endstone LANGUAGES CXX)
 
 # -----------------------
@@ -14,15 +14,15 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 if (WIN32)
     if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
         message(FATAL_ERROR "Endstone: MSVC is required on Windows.")
-    endif()
+    endif ()
 elseif (UNIX)
     if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         message(FATAL_ERROR "Endstone: Clang is required on Linux.")
-    endif()
+    endif ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -fPIC" CACHE STRING "" FORCE)
-else()
+else ()
     message(FATAL_ERROR "Endstone: ${CMAKE_SYSTEM_NAME} (${CMAKE_SYSTEM_PROCESSOR}) is not supported")
-endif()
+endif ()
 
 # -----------------------
 # Options
@@ -62,6 +62,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(fmt)
 
+# base64 (header-only)
+FetchContent_Declare(
+    base64
+    GIT_REPOSITORY https://github.com/ReneNyffenegger/cpp-base64.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(base64)
+set(base64_DIR ${base64_SOURCE_DIR} CACHE PATH "Path to base64")
+
 # -----------------------
 # Subdirectories
 # -----------------------
@@ -81,9 +90,9 @@ if (NOT BUILD_TESTING STREQUAL OFF)
     if (CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g --coverage")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g --coverage")
-    endif()
+    endif ()
 
-    # GoogleTest
+    # GTest
     FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
@@ -92,4 +101,4 @@ if (NOT BUILD_TESTING STREQUAL OFF)
     FetchContent_MakeAvailable(googletest)
     include(GoogleTest)
     add_subdirectory(tests)
-endif()
+endif ()
