@@ -13,12 +13,19 @@ concurrency:
 jobs:
   build:
     name: Build on ${{ matrix.os }} (Release)
-    runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-2022]
+        os: [Windows, Linux]  # 👈 simplifié pour nos runners self-hosted
+
+    # ------------------------------
+    # Runners self-hosted Windows et Linux
+    # ------------------------------
+    runs-on: ${{ 
+      matrix.os == 'Windows' && fromJSON('["self-hosted", "Windows", "X64"]') || 
+      matrix.os == 'Linux'   && fromJSON('["self-hosted", "linux", "x64"]') 
+    }}
 
     steps:
       # ------------------------------
@@ -28,11 +35,10 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          submodules: recursive   # ⚠️ Récupère tous les sous-modules
+          submodules: recursive
 
-      # Vérifier que le sous-module Detours contient bien les sources
       - name: Verify Detours submodule
-        if: matrix.os == 'windows-2022'
+        if: matrix.os == 'Windows'
         shell: bash
         run: |
           if [ ! -f "third_party/detours/src/creatwth.cpp" ]; then
@@ -65,9 +71,8 @@ jobs:
       # 4️⃣ Configuration de l’environnement
       # ------------------------------
 
-      # Linux Clang
       - name: Set up Clang (Linux)
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.os == 'Linux'
         run: |
           sudo apt-get update -y
           sudo apt-get install -y build-essential wget software-properties-common libunwind-dev ninja-build
@@ -80,9 +85,8 @@ jobs:
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV
 
-      # Windows MSVC
       - name: Set up MSVC (Windows)
-        if: matrix.os == 'windows-2022'
+        if: matrix.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
@@ -105,10 +109,8 @@ jobs:
       # ------------------------------
       # 7️⃣ Installation des dépendances
       # ------------------------------
-
-      # Linux
       - name: Install Dependencies with Conan (Linux)
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.os == 'Linux'
         shell: bash
         run: |
           conan install . \
@@ -120,9 +122,8 @@ jobs:
             --conf tools.cmake.cmaketoolchain:generator=Ninja \
             --conf tools.build:cxxflags="-DCPPTRACE_UNWIND_WITH_NOTHING"
 
-      # Windows
       - name: Install Dependencies with Conan (Windows)
-        if: matrix.os == 'windows-2022'
+        if: matrix.os == 'Windows'
         shell: pwsh
         run: |
           conan install . `
@@ -134,10 +135,8 @@ jobs:
       # ------------------------------
       # 8️⃣ Compilation
       # ------------------------------
-
-      # Linux
       - name: Configure and Build with CMake (Linux)
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.os == 'Linux'
         shell: bash
         run: |
           cmake -S . -B build/Release -G Ninja \
@@ -146,9 +145,8 @@ jobs:
             -DCPPTRACE_UNWIND_WITH_NOTHING=ON
           cmake --build build/Release --parallel
 
-      # Windows
       - name: Configure and Build with CMake (Windows)
-        if: matrix.os == 'windows-2022'
+        if: matrix.os == 'Windows'
         shell: pwsh
         run: |
           $toolchain = Get-ChildItem -Recurse -Filter "conan_toolchain.cmake" | Select-Object -First 1
