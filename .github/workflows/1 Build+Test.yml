@@ -1,9 +1,8 @@
 name: Build Endstone
 
+# Activation manuelle uniquement
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
