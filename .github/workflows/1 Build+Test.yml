@@ -110,6 +110,7 @@ jobs:
         if: matrix.os == 'ubuntu-22.04'
         shell: bash
         run: |
+          sudo apt-get install -y libunwind-dev
           conan install . \
             --build=missing \
             -s compiler.cppstd=20 \
