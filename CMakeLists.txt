@@ -71,12 +71,10 @@ endif ()
 
 # Implementations
 add_subdirectory(third_party)
+add_subdirectory(src/endstone/python)
+add_subdirectory(src/bedrock)
 add_subdirectory(src/endstone/core)
 add_subdirectory(src/endstone/runtime)
-add_subdirectory(src/bedrock)
-
-# Python bindings using pybind11 directly
-add_subdirectory(src/endstone/python)
 
 # -----------------------
 # Tests
