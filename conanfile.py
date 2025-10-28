@@ -12,9 +12,7 @@ class EndstoneRecipe(ConanFile):
     license = "Apache-2.0"
     url = "https://github.com/EndstoneMC/endstone"
     homepage = "https://github.com/EndstoneMC/endstone"
-    description = (
-        "Endstone offers a plugin API for Bedrock Dedicated Servers, supporting both Python and C++."
-    )
+    description = "Endstone offers a plugin API for Bedrock Dedicated Servers, supporting both Python and C++."
     topics = ("plugin", "python", "c++", "minecraft", "bedrock")
 
     # Binary configuration
@@ -35,15 +33,13 @@ class EndstoneRecipe(ConanFile):
 
     @property
     def _is_dev_build(self):
-        return getattr(self, "version", "") and "dev" in self.version
+        return "dev" in self.version
 
     @property
     def _with_devtools(self):
-        # Active les devtools uniquement sur Windows
         return self.settings.os == "Windows"
 
     def validate(self):
-        """Vérifie la compatibilité de la configuration Conan"""
         check_min_cppstd(self, self._min_cppstd)
 
         if self.settings.arch != "x86_64":
@@ -56,24 +52,10 @@ class EndstoneRecipe(ConanFile):
                 f"{self.ref} can only be built on Windows or Linux. {self.settings.os} is not supported."
             )
 
-        # Corrigé : GCC sous Linux => libstdc++11
-        if self.settings.os == "Linux" and self.settings.compiler.libcxx != "libstdc++11":
-            raise ConanInvalidConfiguration(
-                f"{self.ref} requires C++ standard library libstdc++11 on Linux."
-            )
-
-    def config_options(self):
-        """Supprime fPIC sous Windows"""
-        if self.settings.os == "Windows":
-            self.options.rm_safe("fPIC")
-
-    def configure(self):
-        """Ajuste les options si build partagé"""
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
+        if self.settings.os == "Linux" and not self.settings.compiler.libcxx == "libc++":
+            raise ConanInvalidConfiguration(f"{self.ref} requires C++ standard libraries libc++ on Linux.")
 
     def requirements(self):
-        """Déclare les dépendances principales"""
         self.requires("base64/0.5.2")
         self.requires("boost/1.86.0")
         self.requires("concurrentqueue/1.0.4")
@@ -95,22 +77,30 @@ class EndstoneRecipe(ConanFile):
             self.requires("libelf/0.8.13")
 
         if self._with_devtools:
+            # self.requires("glew/2.2.0")
             self.requires("glfw/3.4")
             self.requires("imgui/1.91.8-docking")
             self.requires("zstr/1.0.7")
 
-        # Dépendances pour les tests unitaires
         self.test_requires("gtest/1.16.0")
 
+    def config_options(self):
+        if self.settings.os == "Windows":
+            self.options.rm_safe("fPIC")
+
+        # if self.settings.os in ("FreeBSD", "Linux"):
+        #     self.options["sentry-native/*"].backend = "inproc"
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+
     def layout(self):
-        """Définit la structure du projet"""
         cmake_layout(self)
 
     def generate(self):
-        """Génère les fichiers de configuration CMake/Conan"""
         deps = CMakeDeps(self)
         deps.generate()
-
         tc = CMakeToolchain(self)
         if self._with_devtools:
             tc.variables["ENDSTONE_ENABLE_DEVTOOLS"] = True
