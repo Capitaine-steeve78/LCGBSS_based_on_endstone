@@ -44,6 +44,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
+# expose path pour les sous-projets
+set(pybind11_DIR ${pybind11_SOURCE_DIR}/cmake CACHE PATH "Path to pybind11")
+
 # tomlplusplus
 FetchContent_Declare(
     tomlplusplus
@@ -64,17 +67,11 @@ FetchContent_MakeAvailable(fmt)
 # Subdirectories
 # -----------------------
 add_subdirectory(include)
-
-if (NOT CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    return()
-endif ()
-
-# Implementations
 add_subdirectory(third_party)
-add_subdirectory(src/endstone/python)
 add_subdirectory(src/bedrock)
 add_subdirectory(src/endstone/core)
 add_subdirectory(src/endstone/runtime)
+add_subdirectory(src/endstone/python)
 
 # -----------------------
 # Tests
