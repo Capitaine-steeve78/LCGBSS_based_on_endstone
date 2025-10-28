@@ -1,7 +1,9 @@
 name: Build Endstone
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # manuellement
+  # push:
+  #   branches: [main] # décommenter si tu veux tests auto sur push
 
 jobs:
   build:
@@ -36,9 +38,7 @@ jobs:
         run: conan install . --build=missing -s build_type=Release -s compiler.cppstd=20
 
       - name: Setup CMake
-        uses: lukka/run-cmake@v4
-        with:
-          cmake-version: "3.26.4"
+        uses: lukka/run-cmake@v3  # ✅ version corrigée
 
       - name: Configure CMake
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
