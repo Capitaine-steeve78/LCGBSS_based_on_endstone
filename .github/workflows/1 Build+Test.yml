@@ -22,7 +22,7 @@ jobs:
 
     steps:
       # ------------------------------
-      # 1️⃣ Checkout code + submodules
+      # 1️⃣ Récupération du code + sous-modules
       # ------------------------------
       - name: Checkout Code
         uses: actions/checkout@v5
@@ -36,6 +36,7 @@ jobs:
         run: |
           if [ ! -f "third_party/detours/src/creatwth.cpp" ]; then
             echo "❌ Le sous-module Detours n'est pas initialisé correctement."
+            echo "   Exécutez : git submodule update --init --recursive"
             exit 1
           fi
 
@@ -62,6 +63,8 @@ jobs:
       # ------------------------------
       # 4️⃣ Configuration de l’environnement
       # ------------------------------
+
+      # Linux Clang
       - name: Set up Clang (Linux)
         if: matrix.os == 'ubuntu-22.04'
         run: |
@@ -76,6 +79,7 @@ jobs:
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV
 
+      # Windows MSVC
       - name: Set up MSVC (Windows)
         if: matrix.os == 'windows-2022'
         uses: ilammy/msvc-dev-cmd@v1
@@ -83,13 +87,13 @@ jobs:
           arch: x64
 
       # ------------------------------
-      # 5️⃣ Set up CMake & Ninja
+      # 5️⃣ Outils de build
       # ------------------------------
       - name: Set up CMake and Ninja
         uses: lukka/get-cmake@latest
 
       # ------------------------------
-      # 6️⃣ Install Conan
+      # 6️⃣ Installer Conan et détecter l’environnement
       # ------------------------------
       - name: Install Conan
         run: |
@@ -98,8 +102,10 @@ jobs:
           conan profile detect --force
 
       # ------------------------------
-      # 7️⃣ Install dependencies
+      # 7️⃣ Installation des dépendances
       # ------------------------------
+
+      # Linux
       - name: Install Dependencies with Conan (Linux)
         if: matrix.os == 'ubuntu-22.04'
         shell: bash
@@ -112,19 +118,18 @@ jobs:
             -o cpptrace/*:unwind_with_nothing=True \
             --conf tools.cmake.cmaketoolchain:generator=Ninja
 
+      # Windows
       - name: Install Dependencies with Conan (Windows)
         if: matrix.os == 'windows-2022'
         shell: pwsh
         run: |
-          conan install . ` 
-            --build=missing ` 
-            -s compiler.cppstd=20 ` 
-            -s build_type=Release ` 
-            -o cpptrace/*:unwind_with_nothing=True
+          conan install . --build=missing -s compiler.cppstd=20 -s build_type=Release -o cpptrace/*:unwind_with_nothing=True
 
       # ------------------------------
-      # 8️⃣ Configure & Build
+      # 8️⃣ Compilation
       # ------------------------------
+
+      # Linux
       - name: Configure and Build with CMake (Linux)
         if: matrix.os == 'ubuntu-22.04'
         shell: bash
@@ -135,6 +140,7 @@ jobs:
             -DCPPTRACE_UNWIND_WITH_NOTHING=ON
           cmake --build build/Release --parallel
 
+      # Windows
       - name: Configure and Build with CMake (Windows)
         if: matrix.os == 'windows-2022'
         shell: pwsh
@@ -157,7 +163,7 @@ jobs:
         continue-on-error: true
 
       # ------------------------------
-      # 🔟 Upload artifacts
+      # 🔟 Artifacts
       # ------------------------------
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
