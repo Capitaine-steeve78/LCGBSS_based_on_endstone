@@ -62,16 +62,17 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(fmt)
 
 # -----------------------
-# Subdirectories
-# -----------------------
 # Endstone header-only API
+# -----------------------
 add_subdirectory(include)
 
 if (NOT CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     return()
 endif ()
 
+# -----------------------
 # Implementations
+# -----------------------
 add_subdirectory(third_party)
 add_subdirectory(src/endstone/python)
 add_subdirectory(src/bedrock)
