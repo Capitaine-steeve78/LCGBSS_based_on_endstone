@@ -1,9 +1,7 @@
-#test
-#test
 name: Compilation et Tests
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # 🔹 uniquement déclenché à la main
 
 permissions:
   contents: read
@@ -15,23 +13,16 @@ concurrency:
 jobs:
   build:
     name: Build on ${{ matrix.os }} (Release)
-
     strategy:
       fail-fast: false
       matrix:
-        os: [Windows, Linux]  # 👈 simplifié pour nos runners self-hosted
+        os: [Windows, Linux]  # 👈 runners self-hosted
 
-    # ------------------------------
-    # Runners self-hosted Windows et Linux
-    # ------------------------------
-    runs-on: ${{ 
-      matrix.os == 'Windows' && fromJSON('["self-hosted", "Windows", "X64"]') || 
-      matrix.os == 'Linux'   && fromJSON('["self-hosted", "linux", "x64"]') 
-    }}
+    runs-on: ${{ matrix.os == 'Windows' && 'self-hosted' || 'self-hosted' }}
 
     steps:
       # ------------------------------
-      # 1️⃣ Récupération du code + sous-modules
+      # 1️⃣ Checkout code
       # ------------------------------
       - name: Checkout Code
         uses: actions/checkout@v5
@@ -70,9 +61,8 @@ jobs:
           cache: 'pip'
 
       # ------------------------------
-      # 4️⃣ Configuration de l’environnement
+      # 4️⃣ Configure environment
       # ------------------------------
-
       - name: Set up Clang (Linux)
         if: matrix.os == 'Linux'
         run: |
@@ -94,13 +84,13 @@ jobs:
           arch: x64
 
       # ------------------------------
-      # 5️⃣ Outils de build
+      # 5️⃣ Tools: CMake and Ninja
       # ------------------------------
       - name: Set up CMake and Ninja
         uses: lukka/get-cmake@latest
 
       # ------------------------------
-      # 6️⃣ Installer Conan et détecter l’environnement
+      # 6️⃣ Install Conan
       # ------------------------------
       - name: Install Conan
         run: |
@@ -109,7 +99,7 @@ jobs:
           conan profile detect --force
 
       # ------------------------------
-      # 7️⃣ Installation des dépendances
+      # 7️⃣ Install dependencies
       # ------------------------------
       - name: Install Dependencies with Conan (Linux)
         if: matrix.os == 'Linux'
@@ -135,7 +125,7 @@ jobs:
             -o cpptrace/*:unwind_with_nothing=True
 
       # ------------------------------
-      # 8️⃣ Compilation
+      # 8️⃣ Build
       # ------------------------------
       - name: Configure and Build with CMake (Linux)
         if: matrix.os == 'Linux'
@@ -169,7 +159,7 @@ jobs:
         continue-on-error: true
 
       # ------------------------------
-      # 🔟 Artifacts
+      # 🔟 Upload artifacts
       # ------------------------------
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
