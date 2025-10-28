@@ -52,8 +52,13 @@ class EndstoneRecipe(ConanFile):
                 f"{self.ref} can only be built on Windows or Linux. {self.settings.os} is not supported."
             )
 
-        if self.settings.os == "Linux" and not self.settings.compiler.libcxx == "libc++":
-            raise ConanInvalidConfiguration(f"{self.ref} requires C++ standard libraries libc++ on Linux.")
+        # Corrected Linux libcxx check
+        if self.settings.os == "Linux":
+            libcxx = self.settings.compiler.get_safe("libcxx")
+            if libcxx not in ["libstdc++", "libstdc++11", None]:
+                raise ConanInvalidConfiguration(
+                    f"{self.ref} requires C++ standard library libstdc++ or libstdc++11 on Linux."
+                )
 
     def requirements(self):
         self.requires("base64/0.5.2")
@@ -77,7 +82,6 @@ class EndstoneRecipe(ConanFile):
             self.requires("libelf/0.8.13")
 
         if self._with_devtools:
-            # self.requires("glew/2.2.0")
             self.requires("glfw/3.4")
             self.requires("imgui/1.91.8-docking")
             self.requires("zstr/1.0.7")
@@ -87,9 +91,6 @@ class EndstoneRecipe(ConanFile):
     def config_options(self):
         if self.settings.os == "Windows":
             self.options.rm_safe("fPIC")
-
-        # if self.settings.os in ("FreeBSD", "Linux"):
-        #     self.options["sentry-native/*"].backend = "inproc"
 
     def configure(self):
         if self.options.shared:
