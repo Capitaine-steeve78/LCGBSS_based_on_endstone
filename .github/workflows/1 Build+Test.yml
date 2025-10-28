@@ -8,45 +8,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Étape 1 : Checkout du dépôt
+      # 1️⃣ Checkout du dépôt avec les submodules
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          submodules: recursive   # ⚡ Très important pour tomlplusplus si tu l’as en submodule
+          submodules: recursive
 
-      # Étape 2 : Installer clang, ninja, cmake et Python
+      # 2️⃣ Installer les dépendances
       - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y clang ninja-build cmake python3-dev python3-pip git
-          python3 -m pip install --upgrade pip
+          sudo apt-get install -y \
+            clang \
+            ninja-build \
+            cmake \
+            python3-dev \
+            python3-pip \
+            pybind11-dev \
+            git
         shell: bash
 
-      # Étape 3 : Installer pybind11 et tomlplusplus via pip ou submodules
-      - name: Install Python deps (pybind11)
-        run: |
-          python3 -m pip install pybind11
-        shell: bash
-
-      # Étape 4 : Créer le dossier build et configurer CMake
+      # 3️⃣ Configurer CMake
       - name: Configure CMake
         run: |
           mkdir -p build
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-            -DPYBIND11_PYTHON_VERSION=3.12
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
         shell: bash
         env:
           CC: clang
           CXX: clang++
 
-      # Étape 5 : Compiler le projet
+      # 4️⃣ Lancer la compilation
       - name: Build
-        run: |
-          cmake --build build --config Release
-        shell: bash
-
-      # Étape 6 : (optionnel) lancer les tests si tu en as
-      - name: Run tests
-        run: |
-          cmake --build build --target test
+        run: cmake --build build --config Release
         shell: bash
