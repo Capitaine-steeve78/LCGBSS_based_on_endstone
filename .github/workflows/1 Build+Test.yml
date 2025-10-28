@@ -1,3 +1,4 @@
+#test
 name: Build Endstone
 
 on:
@@ -63,3 +64,4 @@ jobs:
     - name: Build
       run: cmake --build build --config Release
       shell: ${{ matrix.os == 'windows-latest' && 'pwsh' || 'bash' }}
+
