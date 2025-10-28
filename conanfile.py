@@ -3,16 +3,21 @@ from conan.errors import ConanInvalidConfiguration
 from conan.tools.build import check_min_cppstd
 from conan.tools.cmake import CMakeDeps, CMakeToolchain, cmake_layout
 
+
 class EndstoneRecipe(ConanFile):
     name = "endstone"
     package_type = "library"
 
+    # Optional metadata
     license = "Apache-2.0"
     url = "https://github.com/EndstoneMC/endstone"
     homepage = "https://github.com/EndstoneMC/endstone"
-    description = "Endstone offers a plugin API for Bedrock Dedicated Servers, supporting both Python and C++."
+    description = (
+        "Endstone offers a plugin API for Bedrock Dedicated Servers, supporting both Python and C++."
+    )
     topics = ("plugin", "python", "c++", "minecraft", "bedrock")
 
+    # Binary configuration
     settings = "os", "compiler", "build_type", "arch"
     options = {"shared": [True, False], "fPIC": [True, False]}
     default_options = {
@@ -29,24 +34,46 @@ class EndstoneRecipe(ConanFile):
         return 20
 
     @property
+    def _is_dev_build(self):
+        return getattr(self, "version", "") and "dev" in self.version
+
+    @property
     def _with_devtools(self):
+        # Active les devtools uniquement sur Windows
         return self.settings.os == "Windows"
 
     def validate(self):
+        """Vérifie la compatibilité de la configuration Conan"""
         check_min_cppstd(self, self._min_cppstd)
 
         if self.settings.arch != "x86_64":
-            raise ConanInvalidConfiguration(f"{self.ref} can only be built on x86_64.")
-
-        if self.settings.os not in ["Windows", "Linux"]:
-            raise ConanInvalidConfiguration(f"{self.ref} can only be built on Windows or Linux.")
-
-        if self.settings.os == "Linux" and self.settings.compiler.libcxx not in ["libstdc++11"]:
             raise ConanInvalidConfiguration(
-                f"{self.ref} requires libc++11 or libstdc++11 on Linux (libc++ not supported)."
+                f"{self.ref} can only be built on x86_64. {self.settings.arch} is not supported."
             )
 
+        if self.settings.os not in ["Windows", "Linux"]:
+            raise ConanInvalidConfiguration(
+                f"{self.ref} can only be built on Windows or Linux. {self.settings.os} is not supported."
+            )
+
+        # Corrigé : GCC sous Linux => libstdc++11
+        if self.settings.os == "Linux" and self.settings.compiler.libcxx != "libstdc++11":
+            raise ConanInvalidConfiguration(
+                f"{self.ref} requires C++ standard library libstdc++11 on Linux."
+            )
+
+    def config_options(self):
+        """Supprime fPIC sous Windows"""
+        if self.settings.os == "Windows":
+            self.options.rm_safe("fPIC")
+
+    def configure(self):
+        """Ajuste les options si build partagé"""
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+
     def requirements(self):
+        """Déclare les dépendances principales"""
         self.requires("base64/0.5.2")
         self.requires("boost/1.86.0")
         self.requires("concurrentqueue/1.0.4")
@@ -72,21 +99,18 @@ class EndstoneRecipe(ConanFile):
             self.requires("imgui/1.91.8-docking")
             self.requires("zstr/1.0.7")
 
+        # Dépendances pour les tests unitaires
         self.test_requires("gtest/1.16.0")
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            self.options.rm_safe("fPIC")
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
-
     def layout(self):
+        """Définit la structure du projet"""
         cmake_layout(self)
 
     def generate(self):
-        CMakeDeps(self).generate()
+        """Génère les fichiers de configuration CMake/Conan"""
+        deps = CMakeDeps(self)
+        deps.generate()
+
         tc = CMakeToolchain(self)
         if self._with_devtools:
             tc.variables["ENDSTONE_ENABLE_DEVTOOLS"] = True
