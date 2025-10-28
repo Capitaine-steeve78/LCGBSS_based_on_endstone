@@ -19,7 +19,6 @@ elseif (UNIX)
     if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         message(FATAL_ERROR "Endstone: Clang is required on Linux.")
     endif ()
-    # Force libc++ for ABI compatibility
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -fPIC" CACHE STRING "" FORCE)
 else ()
     message(FATAL_ERROR "Endstone: ${CMAKE_SYSTEM_NAME} (${CMAKE_SYSTEM_PROCESSOR}) is not supported")
@@ -62,7 +61,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(fmt)
 
 # -----------------------
-# Endstone header-only API
+# Subdirectories
 # -----------------------
 add_subdirectory(include)
 
@@ -70,14 +69,14 @@ if (NOT CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     return()
 endif ()
 
-# -----------------------
 # Implementations
-# -----------------------
 add_subdirectory(third_party)
-add_subdirectory(src/endstone/python)
-add_subdirectory(src/bedrock)
 add_subdirectory(src/endstone/core)
 add_subdirectory(src/endstone/runtime)
+add_subdirectory(src/bedrock)
+
+# Python bindings using pybind11 directly
+add_subdirectory(src/endstone/python)
 
 # -----------------------
 # Tests
