@@ -19,5 +19,5 @@ if((Get-FileHash -Path actions-runner-win-x64-2.329.0.zip -Algorithm SHA256).Has
 Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD/actions-runner-win-x64-2.329.0.zip", "$PWD")<br>
 <br>
 <br>
-./config.cmd --url https://github.com/Capitaine-steeve78/LCGBSS_based_on_endstone --token BY7GTZDRQY6SH7NV74C5EZ3JAC3AE <br>
+./config.cmd --url https://github.com/Capitaine-steeve78/LCGBSS_based_on_endstone --token BY7GTZCKWIHVBR43WJQJKNTJADGVM <br>
 ./run.cmd<br>
