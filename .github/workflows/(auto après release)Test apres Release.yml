@@ -1,0 +1,69 @@
+# auto apres release
+# si besoin le faire a la main
+name: Test apres release
+
+on:
+  release:
+    types: [created]      # se déclenche quand une nouvelle release est créée
+  workflow_dispatch:       # lancement manuel depuis GitHub Actions
+
+permissions: read-all
+
+jobs:
+  coverage:
+    name: Build and Test with Coverage
+    runs-on: ubuntu-22.04
+
+    steps:
+      # 1. Récupération du code
+      - name: Checkout Code
+        uses: actions/checkout@v5
+
+      # 2. Installation de Python
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # 3. Installation de Clang 16 et LLVM
+      - name: Set up Clang 16
+        env:
+          LLVM_VERSION: 16
+        run: |
+          sudo apt-get update -y -q
+          sudo apt-get install -y -q build-essential lsb-release wget software-properties-common gnupg
+          sudo wget https://apt.llvm.org/llvm.sh
+          sudo chmod +x llvm.sh
+          sudo ./llvm.sh ${LLVM_VERSION}
+          sudo apt-get install -y -q libc++-${LLVM_VERSION}-dev libc++abi-${LLVM_VERSION}-dev
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${LLVM_VERSION} 200
+          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${LLVM_VERSION} 200
+          sudo update-alternatives --install /usr/bin/llvm-cov llvm-cov /usr/bin/llvm-cov-${LLVM_VERSION} 100
+          sudo update-alternatives --install /usr/bin/ld ld /usr/bin/ld.lld-${LLVM_VERSION} 100
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+
+      # 4. Installation de CMake et Ninja
+      - name: Set up CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      # 5. Configuration et compilation du projet
+      - name: Configure and Build with CMake
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=ON
+          cmake --build build
+
+      # 6. Exécution des tests et génération du rapport de couverture
+      - name: Run Tests and Generate Coverage Report
+        run: |
+          pip install gcovr
+          ctest --test-dir build
+          gcovr -r . --filter src/ --gcov-executable "llvm-cov gcov" --html --html-details -o coverage.html build
+
+      # 7. Sauvegarde du rapport de couverture comme artefact
+      - name: Upload Coverage Report as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.html
