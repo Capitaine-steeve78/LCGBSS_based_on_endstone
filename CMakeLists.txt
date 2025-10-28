@@ -43,8 +43,6 @@ FetchContent_Declare(
     GIT_TAG v2.11.1
 )
 FetchContent_MakeAvailable(pybind11)
-
-# expose path pour les sous-projets
 set(pybind11_DIR ${pybind11_SOURCE_DIR}/cmake CACHE PATH "Path to pybind11")
 
 # tomlplusplus
