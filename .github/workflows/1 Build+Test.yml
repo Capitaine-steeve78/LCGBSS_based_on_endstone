@@ -1,6 +1,7 @@
 name: build and test
+
 on:
-  workflow_dispatch:  # déclenchement manuel seulement
+  workflow_dispatch:  # déclenchement manuel uniquement
 
 permissions: read-all
 
@@ -10,18 +11,14 @@ concurrency:
 
 jobs:
   build:
+    runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
-        build_type: [Release]
         os: [ubuntu-22.04, windows-2022]
-        include:
-          - os: ubuntu-22.04
-            build_type: Debug
+        build_type: [Release]
 
     name: Build on ${{ matrix.os }} (${{ matrix.build_type }})
-    runs-on: ${{ matrix.os }}
-
+    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v5
