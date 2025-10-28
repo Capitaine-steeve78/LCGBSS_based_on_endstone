@@ -6,28 +6,35 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
+      # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # 2. Install dependencies
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y clang cmake ninja-build python3-dev python3-pip build-essential
+          sudo apt install -y clang cmake ninja-build python3-dev python3-pip build-essential git wget
 
-      - name: Set Clang as default compiler
+      # 3. Set Clang as default compiler
+      - name: Set Clang compiler
         run: |
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV
 
+      # 4. Configure CMake
       - name: Configure CMake
         run: |
           mkdir -p build
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
+      # 5. Build
       - name: Build
         run: cmake --build build --config Release -- -j$(nproc)
 
+      # 6. Run tests
       - name: Run tests
         if: success()
         run: ctest --test-dir build --output-on-failure
