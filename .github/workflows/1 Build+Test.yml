@@ -1,10 +1,8 @@
 name: Build Endstone
 
+# Déclenchement manuel uniquement
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -45,7 +43,7 @@ jobs:
           conan profile update settings.compiler.version=193 default
           conan profile update settings.compiler.runtime=MD default
         fi
-      shell: ${{ matrix.os == 'windows-latest' && 'bash' || 'bash' }}
+      shell: bash
 
     - name: Install Conan dependencies
       run: conan install . --build=missing
