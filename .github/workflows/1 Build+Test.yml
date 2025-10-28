@@ -4,10 +4,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-linux:
-    name: Build and Test (Linux)
-    runs-on: ubuntu-latest
-    continue-on-error: true  # Linux peut échouer sans bloquer Windows
+  build:
+    name: Build and Test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os == 'ubuntu-latest' }}  # Linux peut échouer sans bloquer Windows
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,66 +20,37 @@ jobs:
         with:
           python-version: 3.12
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y clang ninja-build cmake pkg-config
-
-      - name: Install Conan 2
+      - name: Install Conan
         run: |
           python -m pip install --upgrade pip
           pip install conan
 
-      - name: Setup Conan profile for Linux
+      - name: Setup Conan profile
         run: |
-          conan profile new default --detect --force
-          conan profile update settings.compiler=clang default
-          conan profile update settings.compiler.version=17 default
-          conan profile update settings.compiler.libcxx=libc++ default
+          conan profile detect --force
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            conan profile update settings.compiler=clang default
+            conan profile update settings.compiler.version=17 default
+            conan profile update settings.compiler.libcxx=libc++ default
+          else
+            conan profile update settings.compiler=msvc default
+            conan profile update settings.compiler.version=193 default
+            conan profile update settings.compiler.runtime=MD default
+          fi
 
-      - name: Install Conan dependencies
-        run: conan install . --build=missing -s build_type=Release
+      - name: Install dependencies with Conan
+        run: conan install . --build=missing -s build_type=Release -s compiler.cppstd=20
 
       - name: Configure CMake
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build with CMake
-        run: cmake --build build -- -j$(nproc || echo 2)
-
-      - name: Run tests
-        run: ctest --test-dir build --output-on-failure
-
-  build-windows:
-    name: Build and Test (Windows)
-    runs-on: windows-latest
-    needs: build-linux  # attend que Linux commence, mais continue même si Linux échoue
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.12
-
-      - name: Install Conan 2
-        run: python -m pip install --upgrade pip && pip install conan
-
-      - name: Setup Conan profile for Windows
         run: |
-          conan profile new default --detect --force
-          conan profile update settings.compiler=msvc default
-          conan profile update settings.compiler.version=193 default
-          conan profile update settings.compiler.runtime=MD default
-
-      - name: Install Conan dependencies
-        run: conan install . --build=missing -s build_type=Release
-
-      - name: Configure CMake
-        run: cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
+          else
+            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          fi
 
       - name: Build with CMake
-        run: cmake --build build --config Release -- -m
-       
-      - name: Run tests
+        run: cmake --build build --config Release -- -j$(nproc || echo 2)
+
+      - name: Run Tests
         run: ctest --test-dir build --output-on-failure
