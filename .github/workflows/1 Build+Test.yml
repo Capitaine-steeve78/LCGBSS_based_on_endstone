@@ -1,33 +1,84 @@
-name: Build Endstone
+name: Build and Test
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # activable uniquement manuellement
+
+permissions: read-all
+
+concurrency:
+  group: build-and-test-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: Build on ${{ matrix.os }} (${{ matrix.build_type }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release]
+        os: [ubuntu-22.04]
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          submodules: true
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y clang cmake ninja-build python3-dev python3-pip build-essential
+      - name: Cache Conan
+        uses: actions/cache@v4
+        with:
+          path: ~/.conan2/p
+          key: ${{ runner.os }}-conan-${{ matrix.build_type }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            ${{ runner.os }}-conan-${{ matrix.build_type }}-
 
-      - name: Set Clang as default compiler
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Set up Clang (Linux)
+        if: runner.os == 'Linux'
+        env:
+          LLVM_VERSION: 16
         run: |
+          sudo apt-get update -y -q
+          sudo apt-get install -y -q build-essential lsb-release wget software-properties-common
+          sudo wget https://apt.llvm.org/llvm.sh
+          sudo chmod +x llvm.sh
+          sudo ./llvm.sh ${LLVM_VERSION}
+          sudo apt-get install -y -q libc++-${LLVM_VERSION}-dev libc++abi-${LLVM_VERSION}-dev
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${LLVM_VERSION} 200
+          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${LLVM_VERSION} 200
+          sudo update-alternatives --install /usr/bin/llvm-cov llvm-cov /usr/bin/llvm-cov-${LLVM_VERSION} 100
+          sudo update-alternatives --install /usr/bin/ld ld /usr/bin/ld.lld-${LLVM_VERSION} 100
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV
 
-      - name: Configure CMake
+      - name: Set up CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Set up Conan
         run: |
-          mkdir -p build
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          python -m pip install --upgrade pip
+          pip install conan
+          conan profile detect --force
 
-      - name: Build
-        run: cmake --build build --config Release -- -j$(nproc)
+      - name: Install Dependencies with Conan
+        run: |
+          conan install . --build=missing -s compiler.cppstd=20 -s build_type=${{ matrix.build_type }} -c tools.cmake.cmaketoolchain:generator=Ninja -s compiler.libcxx=libc++
 
-      - name: Run tests
-        if: success()
-        run: ctest --test-dir build --output-on-failure
+      - name: Build with CMake
+        run: |
+          mkdir -p build/${{ matrix.build_type }}
+          cd build/${{ matrix.build_type }}
+          cmake ../.. -G Ninja -DCMAKE_TOOLCHAIN_FILE="../../generators/conan_toolchain.cmake" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake --build .
+
+      - name: Run Tests
+        run: |
+          cd build/${{ matrix.build_type }}
+          ctest --output-on-failure
